@@ -4,9 +4,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <string.h>
 
 
-
+#define MAX_BUF_SIZE 2056
 
 
 int main (int argc , char * argv[]){
@@ -33,7 +34,7 @@ int main (int argc , char * argv[]){
     //=================================================== port validation END
     //=================================================== IP validation START
     int state ;
-    long ip ;
+    int ip ;
     if((state = inet_pton(AF_INET , argv[1] , &ip)) == 0 ){
         printf("Invalid Ip adress - Please enter a value in this form : 0-255.0-255.0-255.0-255 \n");
         return -1 ;
@@ -41,7 +42,7 @@ int main (int argc , char * argv[]){
         perror("[-] Error parsing the Ip adress ");
         return -1 ;
     }
-    printf("[*] Connecting to %s:%d\n",argv[2],port);
+    printf("[*] Connecting to %s:%d\n",argv[1],port);
     //=================================================== IP validation END
     //=================================================== Starting the connection socket 
     int connection_fd; 
@@ -51,12 +52,28 @@ int main (int argc , char * argv[]){
     }
     printf("[*] Created connection socket \n");
 
-    int opt = 1;
-    if (setsockopt(connection_fd , SOL_SOCKET , SO_REUSEADDR , &opt , sizeof(opt)) == -1 ){
-        perror("[-] Error Setting the socket parameters ");
+    struct sockaddr_in adr ;
+    adr.sin_family = AF_INET ;
+    adr.sin_port = htons(port);
+    adr.sin_addr.s_addr = ip ;
+
+    if (connect(connection_fd , (struct sockaddr *)&adr , sizeof(adr) ) == -1 ) {
+        perror("[-] Error establishing the connection ");
         close(connection_fd);
         return -1 ;
     }
-
+    printf("Connected ! you can start sending your message right now , press Ctrl + C to close the connection if you want .\n");
+    
+    char buf[MAX_BUF_SIZE] ;
+    while (1)
+    {
+        fgets(buf , MAX_BUF_SIZE , stdin ) ;
+        if(send(connection_fd , buf , strlen(buf),0) == -1){
+            perror("[-] Error sending the msg ");
+            close(connection_fd);
+            return -1;
+        }
+    }
+    
     return 0 ;
 }

@@ -110,7 +110,7 @@ int tcp_socket_listen(int port){
     return listenerSocket_fd ;
 }
 
-void getLoaclIpAddrString(char * ipBuf , int bufSize){
+void getLoaclIpAddrString(char * ipBuf){
     struct ifaddrs *ifa , *ifaIter;
     int state = getifaddrs(&ifa) ;
     if (state == -1 ){
@@ -120,6 +120,7 @@ void getLoaclIpAddrString(char * ipBuf , int bufSize){
     }
     for (ifaIter = ifa ; ifaIter != NULL ; ifaIter = ifaIter->ifa_next){
         if (ifaIter->ifa_addr == NULL) continue; 
+        if (strcmp(ifaIter->ifa_name, "lo") == 0) continue;
         if (ifaIter->ifa_addr->sa_family == AF_INET) {
             inet_ntop(AF_INET , &(*((struct sockaddr_in *)(((*ifaIter).ifa_addr)))).sin_addr , ipBuf , INET_ADDRSTRLEN ) ; //hardest fucking line ever 
             freeifaddrs(ifa);

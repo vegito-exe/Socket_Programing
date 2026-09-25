@@ -64,7 +64,9 @@ int main(int argc , char * argv[]){
     if (argc == 2 ) {
         int port = verify_and_parse_port(argv[1]) ;
         int serverFD = tcp_socket_listen(port) ;
-
+        char serverIP[16] ;
+        getLoaclIpAddrString(serverIP );
+        printf("[*] server LAN adress is :  %s , share this for other clients to let them connect .\n", serverIP);
         struct sockaddr_in addr ;
         
         

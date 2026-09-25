@@ -1,11 +1,9 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/socket.h> //for socket functions
 #include <netinet/in.h> //for the types like sockaddr_in and conversions like htons , 
 #include <arpa/inet.h> //for diff ip conversions  like inet_addr()
 #include <unistd.h> //for close() to work
-
-#define MAX_BUF_SIZE 2056
+#include "functions.h"
 
 
 int main(int argc , char * argv[]){
@@ -16,56 +14,11 @@ int main(int argc , char * argv[]){
     }
     
     //=================================================== port validation START
-    long parsed_port ;
-    char * endptr ;
-    parsed_port = strtol(argv[1],&endptr,10);                 // instead of int port = atoi(argv[1]) to make more verifications 
-
-    if (*endptr != '\0') {
-        printf("Invalid Charachter in input : %c \n" , *endptr);  
-        return -1;
-    } else if ((parsed_port < 1) || (parsed_port > 65535)) {
-        printf("Invalid port value - Ports range 1-65535 \n");
-        return -1;
-    }
-
-    int port = (int) parsed_port ;
+    int port = verify_and_parse_port(argv[1]);
     printf("[*] Creating a server at port %d ...\n" , port) ;
     //=================================================== port validation END
     //=================================================== Creation of the listening socket START
-
-    int listenerSocket_fd ;
-    if ((listenerSocket_fd = socket(AF_INET , SOCK_STREAM , 0)) == -1 ){
-        perror("[-] Error Creating the socket ");   //this one prints the msg u have, checks the value of errno (a var from errno.h) then find the string explanation linked to that value and prints it
-        return -1 ;
-    }
-    printf("[*] Created listener socket \n");
-
-    int opt = 1 ;
-    if (setsockopt(listenerSocket_fd , SOL_SOCKET , SO_REUSEADDR , &opt , sizeof(opt)) == -1 ){
-        perror("[-] Error Setting the socket parameters ");
-        close(listenerSocket_fd);
-        return -1 ;
-    }
-    printf("[*] Set sockopt done correctly \n");
-
-    struct sockaddr_in adr ;
-    adr.sin_family = AF_INET ;
-    adr.sin_port = htons(port);
-    adr.sin_addr.s_addr = htonl(INADDR_ANY) ; //or inet_pton(AF_INET , "0.0.0.0" , &adr.sin_addr);
-
-
-    if (bind(listenerSocket_fd , (struct sockaddr *)&adr , sizeof(adr) ) == -1) {
-        perror("[-] Error Binding the adr/port to socket ");
-        close(listenerSocket_fd);
-        return -1;
-    }
-    printf("[*] Bound the socket to the adr correctly\n");
-
-    if (listen(listenerSocket_fd , 3) == -1) {
-        perror("[-] Listen failed starting ");
-        close(listenerSocket_fd);
-        return -1 ;
-    }
+    int listenerSocket_fd = tcp_socket_listen(port);
     printf("[*] Socket starting listening for requests \n");
     //=================================================== Creation of the listening socket END
     //=================================================== connection Start

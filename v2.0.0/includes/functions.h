@@ -1,10 +1,23 @@
+#ifndef FUNCTIONS_H
+#define FUNCTIONS_H
+
+#define MAX_BUF_SIZE 2048
+#define BACKLOG 20
+
+int verify_and_parse_ip(char *ip_argument);
+int verify_and_parse_port(char *port_argument);
+int tcp_socket_connect(int ip, int port);
+int tcp_socket_listen(int port);
+
+
+//============================================================
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include "functions.h"
+#include <ifaddrs.h>
 
 //returns the port as an int
 int verify_and_parse_port(char * port_argument){
@@ -27,7 +40,7 @@ int verify_and_parse_port(char * port_argument){
 int verify_and_parse_ip(char * ip_argument){
     int state ;
     int ip ;
-    if((state = inet_pton(AF_INET , ip_argument , &ip)) == 0 ){ //using this to check the ip validity becuase it has it built-in instead of doing it manually
+    if((state = inet_pton(AF_INET , ip_argument , &ip)) == 0 ){
         printf("Invalid Ip adress - Please enter a value in this form : 0-255.0-255.0-255.0-255 \n");
         exit(EXIT_FAILURE);
     }else if (state == -1) {
@@ -48,7 +61,7 @@ int tcp_socket_connect(int ip , int port){
 
     struct sockaddr_in adr ;
     adr.sin_family = AF_INET ;
-    adr.sin_port = htons(port); 
+    adr.sin_port = htons(port);
     adr.sin_addr.s_addr = ip ;
 
     if (connect(connection_fd , (struct sockaddr *)&adr , sizeof(adr) ) == -1 ) {
@@ -67,7 +80,7 @@ int tcp_socket_listen(int port){
         exit(EXIT_FAILURE);
     }
     printf("[*] Created listener socket \n");
-
+    
     int opt = 1 ;
     if (setsockopt(listenerSocket_fd , SOL_SOCKET , SO_REUSEADDR , &opt , sizeof(opt)) == -1 ){
         perror("[-] Error Setting the socket parameters ");
@@ -96,3 +109,26 @@ int tcp_socket_listen(int port){
     }
     return listenerSocket_fd ;
 }
+
+void getLoaclIpAddrString(char * ipBuf , int bufSize){
+    struct ifaddrs *ifa , *ifaIter;
+    int state = getifaddrs(&ifa) ;
+    if (state == -1 ){
+        perror("[-] Error getting the local adress ip for display : ");
+        ipBuf[0] = '\0' ;
+        return ;
+    }
+    for (ifaIter = ifa ; ifaIter != NULL ; ifaIter = ifaIter->ifa_next){
+        if (ifaIter->ifa_addr == NULL) continue; 
+        if (ifaIter->ifa_addr->sa_family == AF_INET) {
+            inet_ntop(AF_INET , &(*((struct sockaddr_in *)(((*ifaIter).ifa_addr)))).sin_addr , ipBuf , INET_ADDRSTRLEN ) ; //hardest fucking line ever 
+            freeifaddrs(ifa);
+            return ;
+        }
+    }
+    freeifaddrs(ifa);
+    return ;
+}
+
+
+#endif /* FUNCTIONS_H */

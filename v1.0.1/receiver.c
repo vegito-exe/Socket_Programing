@@ -42,7 +42,7 @@ int main(int argc , char * argv[]){
             close(listenerSocket_fd);
             return -1 ;
         } else if (num_of_recved_bytes == 0) {
-            printf("Connection closed . exiting ...\n");
+            printf("[*] Connection closed . exiting ...\n");
             close(connection_fd);
             close(listenerSocket_fd);
             return 0 ;   

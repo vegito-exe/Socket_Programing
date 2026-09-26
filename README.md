@@ -1,5 +1,10 @@
-# Socket_Programing
- 
-v1.0.0 : a one way communication channel between a server ( the receiver ) and a client (the sender) and only works for LAN (for routing issues)
- 
-v2.0.0 : a bidrectional private chat between a server and a client 
+# Socket Programming
+
+## v1.0.0
+
+- A one-way communication channel between a server (receiver) and a client (sender).
+- Works only over a LAN due to routing limitations.
+
+## v2.0.0
+
+- A bidirectional private chat between a server and a client.

@@ -11,9 +11,4 @@
 
 ## v3.0.0
 
-- A reusable bidirectional TCP chat application for a server and a client.
-- Run the host with a port, or connect as a client using the host's IPv4 address and port.
-- Validates IPv4 addresses and port values before creating a connection.
-- Displays the host's LAN IP address so other devices on the same network can connect.
-- Organizes socket creation, connection handling, and message exchange into reusable functions.
-- Supports up to 100 pending connections while waiting for a client.
+- A multi-client chat server (server excluded from chatting in this version --only logging messages) , where the server starts to listen , exposes the LAN ip for clients to acess . done using threads and used mutex's to avoid race condition crashes , with improved code readabilty / refractoring and error / input validation .

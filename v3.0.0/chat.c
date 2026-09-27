@@ -25,7 +25,7 @@ int main(int argc , char * argv[]){
         int connectionFD = tcp_socket_connect(ip , port );
         printf("[*] Connected Sucsessfully, you can start typing (CTRL + C to close the program)\n");
 
-        int exitStatus = recvAndSendUsingGivenSocket(connectionFD);
+        int exitStatus = recvAndSendUsingGivenSocketClientSide(connectionFD);
         return exitStatus ;
     }
 
@@ -38,19 +38,21 @@ int main(int argc , char * argv[]){
         getLoaclIpAddrString(serverIP );
         printf("[*] server LAN adress is :  %s , share this for other LAN clients to let them connect .\n", serverIP);
 
-        AcceptedConnection connection = acceptIncomingConnectionOnListeningSocket(serverFD);
-        if (connection.acceptedConnectionFD == -1 )  {
-            perror("a client tried to connect but a problem accepting the connection occurred : ");
-        }  else {
-            printf("[+] A client with IP : %s has connected ! \n" , connection.addrIpString);
+        while(1){
+            AcceptedConnection connection = acceptIncomingConnectionOnListeningSocket(serverFD);
+            if (connection.acceptedConnectionFD == -1 )  {
+                perror("a client tried to connect but a problem accepting the connection occurred : ");
+            }  else {
+                printf("[+] A client with IP : %s has connected ! \n" , connection.addrIpString);
+                pthread_t id ;
+                pthread_create(&id,NULL, handleClient , &connection);
+                pthread_detach(id);
+            }
         }
         
-        int exitStatus = recvAndSendUsingGivenSocket(connection.acceptedConnectionFD) ;
-        return exitStatus;
     }
-
-
-
 
     return 0 ;
 }
+
+

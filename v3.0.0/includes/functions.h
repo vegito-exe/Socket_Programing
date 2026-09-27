@@ -3,6 +3,7 @@
 
 #define MAX_BUF_SIZE 2048
 #define BACKLOG 100
+#define MAX_NUMBER_OF_THREADS 100
 
 typedef struct {
     int acceptedConnectionFD ;
@@ -10,14 +11,19 @@ typedef struct {
     char addrIpString[16];
 } AcceptedConnection ;
 
+AcceptedConnection accumulatedConnections[MAX_NUMBER_OF_THREADS] ;
+int connectionsCpt = 0 ;
+pthread_mutex_t locker = PTHREAD_MUTEX_INITIALIZER ;
+
 int verify_and_parse_ip(char *ip_argument);
 int verify_and_parse_port(char *port_argument);
 int tcp_socket_connect(int ip, int port);
 int tcp_socket_listen(int port);
 void getLoaclIpAddrString(char * ipBuf);
-int recvAndSendUsingGivenSocket(int connectionFD);
+int recvAndSendUsingGivenSocketClientSide(int connectionFD);
+int recvAndBroadcastUsingGivenSocketServerSideThread(AcceptedConnection acceptedConnection);
 AcceptedConnection acceptIncomingConnectionOnListeningSocket(int listeningSockedFD);
-
+void * handleClient(void * acceptedConnectionPtr);
 //============================================================
 #include <stdio.h>
 #include <stdlib.h>
@@ -141,7 +147,7 @@ void getLoaclIpAddrString(char * ipBuf){
 }
 
 
-int recvAndSendUsingGivenSocket(int connectionFD){
+int recvAndSendUsingGivenSocketClientSide(int connectionFD){
         fd_set currentFDs , readFDs ;
         FD_ZERO(&currentFDs) ;
         FD_SET(STDIN_FILENO, &currentFDs);
@@ -179,6 +185,43 @@ int recvAndSendUsingGivenSocket(int connectionFD){
         }
 }
 
+//when done from this function (error happened or connection closed ) remove it from the accumilator , and clsoe the thread
+int recvAndBroadcastUsingGivenSocketServerSideThread(AcceptedConnection acceptedConnection){
+        int connectionFD = acceptedConnection.acceptedConnectionFD ;
+        while (1) {   
+            ssize_t num_of_recved_bytes ;
+            char buf[MAX_BUF_SIZE] ;
+            if ( (num_of_recved_bytes = recv(connectionFD , buf , MAX_BUF_SIZE - 1 , 0 )) == -1 ){
+                perror("[-] Error receiving the message ");
+                close(connectionFD);
+                return -1 ; // error 
+            } else if (num_of_recved_bytes == 0) {
+                printf("[*] Connection closed . exiting ...\n");
+                close(connectionFD);
+                return 0;  //not error
+            }
+            buf[num_of_recved_bytes] = '\0';
+            char msgWithIP[MAX_BUF_SIZE + 24] ;
+            sprintf(msgWithIP , "%s : %s",acceptedConnection.addrIpString , buf );
+            printf("%s",msgWithIP);
+
+            //broadcast part
+
+            pthread_mutex_lock(&locker);
+            for (int i = 0 ; i < connectionsCpt ; i++){
+                if (accumulatedConnections[i].acceptedConnectionFD == acceptedConnection.acceptedConnectionFD)  continue;
+                 
+                if(send(accumulatedConnections[i].acceptedConnectionFD , msgWithIP , strlen(msgWithIP),0) == -1){
+                perror("[-] Error sending the msg : ");
+                close(connectionFD);
+                return -1; 
+                }
+            }
+            pthread_mutex_unlock(&locker);
+            
+        }
+}
+
 AcceptedConnection acceptIncomingConnectionOnListeningSocket(int listeningSockedFD){
     AcceptedConnection result ;
     strcpy(result.addrIpString , "NO_IP"); // intialization
@@ -193,5 +236,27 @@ AcceptedConnection acceptIncomingConnectionOnListeningSocket(int listeningSocked
     return result ;
 }
 
+void * handleClient(void * acceptedConnectionPtr){ // what this should do ?? adds the accepted connection to the array and remove it at the end, recv messages from the client print them normally , BUT , when  trying to send , it should broadcast the message to all other connecting sockets , which are found in accumulatedConnections array , if the connection gets closed somehow, update that array and remove the FD from it , i think thats it 
+    AcceptedConnection acceptedConnection = *(AcceptedConnection *)(acceptedConnectionPtr) ;
+
+    pthread_mutex_lock(&locker);
+    accumulatedConnections[connectionsCpt] = acceptedConnection;
+    connectionsCpt++ ; 
+    pthread_mutex_unlock(&locker) ;
+
+    recvAndBroadcastUsingGivenSocketServerSideThread(acceptedConnection);
+
+    pthread_mutex_lock(&locker);
+    for (int i = 0 ; i < connectionsCpt ; i++){
+        if (i == acceptedConnection.acceptedConnectionFD){
+            accumulatedConnections[i] = accumulatedConnections[connectionsCpt - 1];
+            break ;
+        }
+    }
+    pthread_mutex_unlock(&locker);
+    
+    printf("[*] The connection from user with IP : %s was closed \n",acceptedConnection.addrIpString);
+    pthread_exit(NULL);
+}
 
 #endif /* FUNCTIONS_H */
